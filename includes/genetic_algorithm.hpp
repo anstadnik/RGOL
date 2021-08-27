@@ -1,5 +1,9 @@
 #pragma once
-/*
+
+#include <execution>
+#include <numeric>
+#include <queue>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -7,21 +11,26 @@
 
 class GeneticAlgorithm {
  public:
-  GeneticAlgorithm(const std::string& target, size_t pool_size = 1000,
-                   float mutation_rate = 0.1);
+  GeneticAlgorithm(const Field& target, size_t delta, size_t pool_size = 1000,
+                   float mutation_rate = 10e-5, float live_multiplier = 10,
+                   size_t n_elitist = 5);
   // ~GeneticAlgorithm();
-  bool step();
-  std::vector<float> computeFitness();
-  std::vector<std::pair<size_t, size_t>> selection(
-      const std::vector<float>& fitness);
-  Field crossover(const Field& a, const Field& B, float a_fitness,
-                  float b_fitness);
-  void mutate(Field& f);
+  float step();
+  void computeFitness();
+  std::vector<std::pair<size_t, size_t>> selection();
+  Field& crossover(Field& a, const Field& b, float a_fitness, float b_fitness);
+  Field& mutate(Field& f);
 
  private:
   std::vector<Field> pool;
-  const size_t H, W;
+  /* TODO: try double for fitness <27-08-21, astadnik> */
+  std::vector<float> fitness;
+  const int H, W;
   const Field target;
   const size_t pool_size;
+  const size_t delta;
   const float mutation_rate;
-}; */
+  const size_t n_elitist;
+  const float live_multiplier;
+  const int max_fitness;
+};

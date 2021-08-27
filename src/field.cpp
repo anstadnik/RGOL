@@ -18,6 +18,29 @@ Field::Field(const std::list<std::string>& init, size_t H, size_t W)
   }
 }
 
+Field::Field(const Field& other)
+    : H(other.H), W(other.W), f_(other.f_), cur_field(other.cur_field) {}
+
+Field::Field(FIELD_T&& f_) : H(f_.size()), W(f_[0].size()), f_({f_, f_}){}
+
+bool Field::operator==(const Field& other) const {
+  return f_ == other.f_ && cur_field == other.cur_field;
+}
+
+Field Field::get_random(size_t H, size_t W) {
+  Field::FIELD_T f_;
+  f_.reserve(H);
+  for (size_t i = 0; i < H; i++) {
+    f_.push_back(vector<char>(W));
+    // ranges::generate(f.back(), []() {return randomGen<ratio_of_death_to_live_in_random_init>() ? '.' : '#';});
+    ranges::generate(f_.back(), []() {return '.';});
+  }
+  auto f = Field(move(f_));
+  for (size_t i = 0; i < 5; i++) 
+    f.step();
+  return f;
+}
+
 void Field::countNeighbours() {
   auto& f = f_[cur_field];
   auto& next_f = f_[!cur_field];
@@ -30,12 +53,12 @@ void Field::countNeighbours() {
       if (*l == '#') {
         auto cur_line = next_f.begin() + i;
         auto f = [&](auto&& l_, bool center = false) {
-          if (j) l_[j -1]++;
+          if (j) l_[j - 1]++;
           if (!center) l_[j]++;
           if (j < W - 2) l_[j + 1]++;
         };
         // auto previous_char = previous_line->begin() + j;
-        if (i) f(cur_line[ - 1]);
+        if (i) f(cur_line[-1]);
         f(cur_line[0], true);
         if (i < H - 2) f(cur_line[1]);
       }

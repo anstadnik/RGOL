@@ -49,8 +49,11 @@ find_package(SFML 2.5 COMPONENTS graphics REQUIRED)
 target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-audio)
 
 # # Use threads
-find_package(Threads)
+find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+
+find_package(TBB REQUIRED)
+target_link_libraries(${PROJECT_NAME} ${TBB_IMPORTED_TARGETS})
 
 # # Use openmp if found
 # option(USE_OPENMP "flag to use OpenMP for multithreading" ON)
