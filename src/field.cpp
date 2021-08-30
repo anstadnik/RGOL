@@ -2,8 +2,8 @@
 
 using namespace std;
 
-Field::Field(const std::list<std::string>& init, size_t H, size_t W)
-    : H(H ? H : init.size()), W(W ? W : init.front().size()) {
+Field::Field(const std::list<std::string>& init, size_t H_, size_t W_)
+    : H(H_ ? H_ : init.size()), W(W_ ? W_ : init.front().size()) {
   auto& f = f_[cur_field];
 
   f_ = {FIELD_T(H, vector<char>(W, '.')), FIELD_T(H, vector<char>(W, '.'))};
@@ -21,23 +21,34 @@ Field::Field(const std::list<std::string>& init, size_t H, size_t W)
 Field::Field(const Field& other)
     : H(other.H), W(other.W), f_(other.f_), cur_field(other.cur_field) {}
 
-Field::Field(FIELD_T&& f_) : H(f_.size()), W(f_[0].size()), f_({f_, f_}){}
+Field::Field(Field&& other)
+    : H(other.H), W(other.W), f_(move(other.f_)), cur_field(other.cur_field) {}
+
+Field::Field(FIELD_T&& f_) : H(f_.size()), W(f_[0].size()), f_({f_, f_}) {}
+
+Field& Field::operator=(Field&& other) {
+  assert(this->W == other.W && this->H == other.W);
+  this->f_ = move(other.f_);
+  this->cur_field = other.cur_field;
+  return *this;
+} 
 
 bool Field::operator==(const Field& other) const {
   return f_ == other.f_ && cur_field == other.cur_field;
 }
 
-Field Field::get_random(size_t H, size_t W) {
+Field Field::get_random(size_t H, size_t W, size_t ratio) {
   Field::FIELD_T f_;
   f_.reserve(H);
   for (size_t i = 0; i < H; i++) {
-    f_.push_back(vector<char>(W));
-    // ranges::generate(f.back(), []() {return randomGen<ratio_of_death_to_live_in_random_init>() ? '.' : '#';});
-    ranges::generate(f_.back(), []() {return '.';});
+    f_.push_back(vector<char>(W, '#'));
+    ranges::generate(f_.back(), [=]() {
+      return randomGen(ratio ? ratio : ratio_of_death_to_live_in_random_init) ? '#' : '.';
+    });
+    // ranges::generate(f_.back(), []() { return '.'; });
   }
   auto f = Field(move(f_));
-  for (size_t i = 0; i < 5; i++) 
-    f.step();
+  // for (size_t i = 0; i < 5; i++) f.step();
   return f;
 }
 
@@ -55,12 +66,12 @@ void Field::countNeighbours() {
         auto f = [&](auto&& l_, bool center = false) {
           if (j) l_[j - 1]++;
           if (!center) l_[j]++;
-          if (j < W - 2) l_[j + 1]++;
+          if (j < W - 1) l_[j + 1]++;
         };
         // auto previous_char = previous_line->begin() + j;
         if (i) f(cur_line[-1]);
         f(cur_line[0], true);
-        if (i < H - 2) f(cur_line[1]);
+        if (i < H - 1) f(cur_line[1]);
       }
     }
   }
@@ -93,14 +104,16 @@ void Field::step() {
 Field::operator string() const {
   auto& f = f_[cur_field];
   string s;
-  s.reserve(H * (W + 1));
+  s.reserve(H * (W + 1) + 2);
   size_t i = 0;
+  s.insert(i++, "\n");
   for (const auto& l : f) {
     s.insert(i, l.data(), W);
     i += W;
     s.insert(i++, "\n");
   }
   assert(i == s.size());
+  s.insert(i++, "\n");
   return s;
 }
 

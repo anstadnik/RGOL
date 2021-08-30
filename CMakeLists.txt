@@ -55,6 +55,10 @@ target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 find_package(TBB REQUIRED)
 target_link_libraries(${PROJECT_NAME} ${TBB_IMPORTED_TARGETS})
 
+find_package(X11 REQUIRED)
+link_libraries(${X11_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${X11_LIBRARIES})
+
 # # Use openmp if found
 # option(USE_OPENMP "flag to use OpenMP for multithreading" ON)
 # if(USE_OPENMP)

@@ -4,13 +4,14 @@
 
 #include "field.hpp"
 
-constexpr size_t scale = 2;
+constexpr size_t scale = 10;
 
 class GUI {
  public:
   GUI(size_t H, size_t W);
   ~GUI();
-  void update(const Field &f, size_t iteration);
+  static void showField(const Field::FIELD_T& f, const std::string& text = "");
+  void update(const Field::FIELD_T &f, size_t iteration = 0, const std::string& text = "");
   bool isOpen() const;
 
  private:

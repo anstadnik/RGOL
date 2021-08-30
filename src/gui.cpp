@@ -28,9 +28,14 @@ void GUI::checkEvents() {
   }
 }
 
-void GUI::update(const Field& field, size_t iteration) {
-  const Field::FIELD_T f = field.field();
-  const size_t H = field.H, W = field.W;
+void GUI::showField(const Field::FIELD_T& f, const string& text) {
+  GUI g(f.size(), f[0].size());
+  g.update(f, 0, text);
+  while (g.window.isOpen()) g.checkEvents();
+}
+
+void GUI::update(const Field::FIELD_T &f, size_t iteration, const string& text) {
+  const size_t H = f.size(), W = f[0].size();
   vector<sf::Uint8> pixels(W * 4 * scale);
   sf::Texture texture;
   texture.create(W * scale, H * scale);
@@ -56,18 +61,27 @@ void GUI::update(const Field& field, size_t iteration) {
 
   window.draw(sprite);
 
-  // Create a graphical text to display
-  sf::Font font;
-  if (!font.loadFromFile(
-          "/home/astadnik/work/madame-web/projects/object_detection/resources/"
-          "fonts/JetBrainsMono-Regular.ttf"))
-    throw runtime_error("No font");
-  sf::Text text("Iteration: " + to_string(iteration), font, 25);
-  window.draw(text);
+  if (iteration) {
+    sf::Font font;
+    if (!font.loadFromFile("/home/astadnik/work/madame-web/projects/"
+                           "object_detection/resources/"
+                           "fonts/JetBrainsMono-Regular.ttf"))
+      throw runtime_error("No font");
+    sf::Text text("Iteration: " + to_string(iteration), font, 5 * scale);
+    window.draw(text);
+  }
+  if (text.size()) {
+    sf::Font font;
+    if (!font.loadFromFile("/home/astadnik/work/madame-web/projects/"
+                           "object_detection/resources/"
+                           "fonts/JetBrainsMono-Regular.ttf"))
+      throw runtime_error("No font");
+    window.draw(sf::Text(text, font, 5 * scale));
+  }
   window.display();
   checkEvents();
 }
 
 bool GUI::isOpen() const { return window.isOpen(); }
 
-GUI::~GUI() {}
+GUI::~GUI() { window.close(); }

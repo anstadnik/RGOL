@@ -2,9 +2,9 @@
 
 #include "field.hpp"
 
-typedef struct {
+typedef struct Entry_ {
   size_t id;
-  int delta;
+  size_t delta;
   Field::FIELD_T f;
 } Entry;
 

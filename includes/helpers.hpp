@@ -2,16 +2,22 @@
 
 #include <cassert>
 #include <random>
+#include <ranges>
 #include <vector>
+#include <unordered_map>
 
 #include "algs/algs.h"
-template <int MAX>
-bool randomGen() {
+#include "field.hpp"
+
+inline ulong randomGen(size_t max_v) {
   static std::mt19937 gen{std::random_device{}()};
-  static int r = gen();
-  if (r > MAX)
-    r /= MAX;
+  static std::unordered_map<size_t, size_t> m;
+  if (!m.contains(max_v))
+    m[max_v] = gen();
+  size_t& r = m[max_v];
+  if (r > max_v)
+    r /= max_v;
   else
     r = gen();
-  return (r % MAX);
+  return r % max_v;
 }
