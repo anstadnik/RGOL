@@ -18,7 +18,7 @@ class GeneticAlgorithm {
  public:
   GeneticAlgorithm(const Field& target, size_t delta, size_t pool_size = 1000,
                    float mutation_rate = 10e-5, float live_multiplier = 10,
-                   size_t n_elitist = 5);
+                   size_t n_elitist = 5, size_t stagnation_limit = 100, float percent_extermination = 0.3);
   // ~GeneticAlgorithm();
   float step();
   void computeFitness();
@@ -27,7 +27,9 @@ class GeneticAlgorithm {
                   float b_fitness);
   std::vector<Field> getElite();
   Field mutate(Field&& f);
+  void extermination();
   const Field& getBest() const;
+  float getBestFitness() const;
 
  private:
   std::vector<Field> pool;
@@ -43,8 +45,14 @@ class GeneticAlgorithm {
   const size_t n_elitist;
   const float live_multiplier;
   const int max_fitness;
+  size_t stagnation_limit;
 
-  size_t best_index;
+  size_t best_index = 0;
+  size_t n_stagnation = 0;
+  float percent_extermination;
+  float best_fitness = 0;
+
+  static constexpr size_t random_multiplier = 100;
 };
 
 typedef struct Metrics_ {

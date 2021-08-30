@@ -8,7 +8,9 @@ void flip(char& c) { c = c == '.' ? '#' : '.'; }
 
 GeneticAlgorithm::GeneticAlgorithm(const Field& target, size_t delta,
                                    size_t pool_size, float mutation_rate,
-                                   float live_multiplier, size_t n_elitist)
+                                   float live_multiplier, size_t n_elitist,
+                                   size_t stagnation_limit,
+                                   float percent_extermination)
     : H(target.H),
       W(target.W),
       target(target),
@@ -23,51 +25,20 @@ GeneticAlgorithm::GeneticAlgorithm(const Field& target, size_t delta,
                                     return sum + ranges::count(f, '#');
                                   });
         return n_living * live_multiplier + H * W - n_living;
-      }()) {
+      }()),
+      stagnation_limit(stagnation_limit),
+      percent_extermination(percent_extermination) {
   assert(pool_size > n_elitist);
   pool.reserve(pool_size);
   for (size_t i = 0; i < pool_size; i++) {
     pool.push_back(
         Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500))));
-    /* if (i % 100)
-      continue;
-    const auto& f = pool.back();
-    for (const auto& l : f.field()) {
-      ranges::copy(l, ostream_iterator<char>(cout, ""));
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    Field f_(f);
-    // for (size_t k = 0; k < delta; k++) f_.step();
-    Metrics m = calculateMetrics(target.field(), Field(f), delta);
-    std::cout << "TP: " << m.true_pos << ", FP: " << m.false_pos
-              << ", FN: " << m.false_neg << std::endl;
-    GUI::showField(f_.field(), "Pool"); */
   }
-  // exit(1);
   fitness.resize(pool_size);
   computeFitness();
 }
 
 float GeneticAlgorithm::step() {
-  /* {
-    // thread t(GUI::showField, ref(target), "Target");
-    for (const auto& f : pool) {
-      for (const auto& l : f.field()) {
-        ranges::copy(l, ostream_iterator<char>(cout, ""));
-        std::cout << std::endl;
-      }
-      std::cout << std::endl;
-      Field f_(f);
-      // for (size_t k = 0; k < delta; k++) f_.step();
-      Metrics m = calculateMetrics(target.field(), Field(f), delta);
-      std::cout << "TP: " << m.true_pos << ", FP: " << m.false_pos
-                << ", FN: " << m.false_neg << std::endl;
-      GUI::showField(f_.field(), "Pool");
-    }
-  }
-  exit(1); */
-
   auto mating_pool = selection();
   vector<Field> pool_;
   pool_.reserve(pool_size);
@@ -77,21 +48,25 @@ float GeneticAlgorithm::step() {
   auto&& elitists = getElite();
   pool_.insert(pool_.end(), std::make_move_iterator(elitists.begin()),
                std::make_move_iterator(elitists.end()));
-  /* for (size_t i = 0; i < 3; i++)
-    assert(dbg(pool_[mating_pool[pool_size - 1 - i].first]) ==
-    dbg(pool[mating_pool[pool_size - 1 - i].first])); */
   pool = move(pool_);
   computeFitness();
-  /* map<Field::FIELD_T, int> m;
-  for (const auto& f : pool) m[f.field()]++;
-  map<int, int> m_;
-  for (const auto& i : m) m_[i.second]++; */
-  /* multiset<int> ns;
-  ranges::transform(m, inserter(ns, ns.begin()), [](const pair<Field::FIELD_T,
-  int>& p) {return p.second;}); */
-  // dbg(m_);
 
-  return *max_element(fitness.begin(), fitness.end());
+  // Hm. I remove best ones
+  Field best(this->getBest());
+  for (size_t i = 0; i < pool_size; i++)
+    if (pool[i] == best)
+      pool[i] =
+          Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
+
+  float best_fitness_ = *max_element(fitness.begin(), fitness.end());
+  // assert(!n_stagnation || best_fitness_ >= best_fitness);
+  /* n_stagnation = best_fitness_ == best_fitness ? n_stagnation + 1 : 0;
+  if (n_stagnation > stagnation_limit) {
+    std::cout << "EXTERMINATION!" << std::endl;
+    n_stagnation = 0;
+    extermination();
+  } */
+  return best_fitness = best_fitness_;
 }
 
 void GeneticAlgorithm::computeFitness() {
@@ -159,23 +134,32 @@ vector<pair<size_t, size_t>> GeneticAlgorithm::selection() {
 Field GeneticAlgorithm::crossover(const Field& a, const Field& b,
                                   float a_fitness, float b_fitness) {
   Field::FIELD_T ret(a.field());
-  size_t threshold = 1000 - 1000 * b_fitness / (a_fitness + b_fitness);
+  size_t threshold = random_multiplier -
+                     random_multiplier * b_fitness / (a_fitness + b_fitness);
   for (auto [l, l_] = tuple{ret.begin(), b.field().begin()}; l < ret.end();
        l++, l_++)
     for (auto [c, c_] = tuple{l->begin(), l_->begin()}; c < l->end(); c++, c_++)
-      if (randomGen(1000) > threshold) *c = *c_;
+      if (randomGen<random_multiplier>() > threshold) *c = *c_;
   return Field(move(ret));
 }
 
 Field GeneticAlgorithm::mutate(Field&& f) {
   for (auto l = f.f_[f.cur_field].begin(); l < f.f_[f.cur_field].end(); l++)
     for (auto c = l->begin(); c < l->end(); c++) {
-      if (randomGen(10000) < mutation_rate * 10000) flip(*c);
+      if (randomGen<random_multiplier>() < mutation_rate * random_multiplier)
+        flip(*c);
     }
   return move(f);
 }
 
+void GeneticAlgorithm::extermination() {
+  for (size_t i = 0; i < pool_size; i++)
+    pool[i] = Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
+}
+
 const Field& GeneticAlgorithm::getBest() const { return pool[best_index]; }
+
+float GeneticAlgorithm::getBestFitness() const { return best_fitness; }
 
 Metrics calculateMetrics(const Field::FIELD_T& target, Field&& best,
                          size_t delta) {

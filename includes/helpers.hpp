@@ -21,3 +21,14 @@ inline ulong randomGen(size_t max_v) {
     r = gen();
   return r % max_v;
 }
+
+template <int MAX_V>
+ulong randomGen() {
+  static std::mt19937 gen{std::random_device{}()};
+  static size_t r = gen();
+  if (r > MAX_V)
+    r /= MAX_V;
+  else
+    r = gen();
+  return r % MAX_V;
+}

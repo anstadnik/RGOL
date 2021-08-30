@@ -37,7 +37,7 @@ void runGeneticAlgorithm() {
   // auto i = algs::io::readFileToList("data/glider.txt");
   // vector<Entry> inp{{0, 1, Field(i).field()}};
   for (auto& [id, delta, f] : inp) {
-    size_t max_n = 1000, n = max_n;
+    size_t max_n = 10000, n = max_n;
 
     bool open = true;
     (void)open;
@@ -55,13 +55,14 @@ void runGeneticAlgorithm() {
         },
         f); */
     delta = 1;
-    GeneticAlgorithm g(Field(move(f)), delta, 1000);
+    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 7, 5, 20, 0.5);
     while (g.step() != 1 && n--) {
       Metrics m = calculateMetrics(f, Field(g.getBest()), delta);
       Field tmp = Field(g.getBest());
       for (size_t k = 0; k < delta; k++) tmp.step();
       best = move(tmp);
-      std::cout << "N: " << max_n - n << ", TP: " << m.true_pos << ", FP: " << m.false_pos
+      std::cout << "N: " << max_n - n << ", Fitness: " << g.getBestFitness()
+                << ", TP: " << m.true_pos << ", FP: " << m.false_pos
                 << ", FN: " << m.false_neg << std::endl;
       /* for (const auto& l : best->field()) {
         ranges::copy(l, ostream_iterator<char>(cout, ""));
