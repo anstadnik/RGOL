@@ -21,7 +21,8 @@ class GeneticAlgorithm {
                    size_t n_elitist = 5, size_t stagnation_limit = 100, float percent_extermination = 0.3);
   // ~GeneticAlgorithm();
   float step();
-  void computeFitness();
+  void computeFitness(std::vector<size_t> is = {});
+  // void computeFitness();
   std::vector<std::pair<size_t, size_t>> selection();
   Field crossover(const Field& a, const Field& b, float a_fitness,
                   float b_fitness);
@@ -57,6 +58,7 @@ class GeneticAlgorithm {
 
 typedef struct Metrics_ {
   size_t true_pos = 0;
+  size_t true_neg = 0;
   size_t false_pos = 0;
   size_t false_neg = 0;
   float precision = 0;

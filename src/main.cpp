@@ -55,15 +55,17 @@ void runGeneticAlgorithm() {
         },
         f); */
     delta = 1;
-    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 7, 5, 20, 0.5);
+    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 500, 5, 20, 0.5);
+    // GeneticAlgorithm g(Field(move(f)), delta, 100, 10e-3, 7, 1, 20, 0.5);
     while (g.step() != 1 && n--) {
       Metrics m = calculateMetrics(f, Field(g.getBest()), delta);
       Field tmp = Field(g.getBest());
       for (size_t k = 0; k < delta; k++) tmp.step();
       best = move(tmp);
       std::cout << "N: " << max_n - n << ", Fitness: " << g.getBestFitness()
-                << ", TP: " << m.true_pos << ", FP: " << m.false_pos
-                << ", FN: " << m.false_neg << std::endl;
+                << ", TP: " << m.true_pos << ", TN: " << m.true_neg
+                << ", FP: " << m.false_pos << ", FN: " << m.false_neg
+                << std::endl;
       /* for (const auto& l : best->field()) {
         ranges::copy(l, ostream_iterator<char>(cout, ""));
         std::cout << std::endl;

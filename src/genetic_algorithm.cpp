@@ -25,15 +25,16 @@ GeneticAlgorithm::GeneticAlgorithm(const Field& target, size_t delta,
                                     return sum + ranges::count(f, '#');
                                   });
         return n_living * live_multiplier + H * W - n_living;
+        ;
       }()),
       stagnation_limit(stagnation_limit),
       percent_extermination(percent_extermination) {
   assert(pool_size > n_elitist);
   pool.reserve(pool_size);
-  for (size_t i = 0; i < pool_size; i++) {
-    pool.push_back(
-        Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500))));
-  }
+  for (size_t i = 0; i < pool_size; i++)
+    pool.push_back(Field::get_random(
+        H, W,
+        max(2ul, ((i + pool_size) / 3) / max(1ul, 2 * pool_size / 3 / 625))));
   fitness.resize(pool_size);
   computeFitness();
 }
@@ -53,10 +54,16 @@ float GeneticAlgorithm::step() {
 
   // Hm. I remove best ones
   Field best(this->getBest());
+  if (fitness[best_index] == 1) return 1;
+  vector<size_t> is;
   for (size_t i = 0; i < pool_size; i++)
-    if (pool[i] == best)
+    if (pool[i] == best) {
+      is.push_back(i);
       pool[i] =
           Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
+    }
+  // dbg(is.size(), max_fitness);
+  computeFitness(is);
 
   float best_fitness_ = *max_element(fitness.begin(), fitness.end());
   // assert(!n_stagnation || best_fitness_ >= best_fitness);
@@ -69,10 +76,12 @@ float GeneticAlgorithm::step() {
   return best_fitness = best_fitness_;
 }
 
-void GeneticAlgorithm::computeFitness() {
-  vector<size_t> ns(pool_size);
-  iota(ns.begin(), ns.end(), 0);
-  for_each(execution::par, ns.begin(), ns.end(), [&](const size_t i) {
+void GeneticAlgorithm::computeFitness(vector<size_t> is) {
+  if (!is.size()) {
+    is.resize(pool_size);
+    iota(is.begin(), is.end(), 0);
+  }
+  for_each(execution::par, is.begin(), is.end(), [&](const size_t i) {
     // for (size_t i = 0; i < pool_size; i++) {
     pair<int, int> n_matches{0, 0};  // N of live and death matches
     auto f(pool[i]);
@@ -87,11 +96,21 @@ void GeneticAlgorithm::computeFitness() {
           else
             n_matches.second++;
         }
+    /* if (n_matches.first == 4 && f.field()[0][0] == '#' &&
+        f.field()[H - 1][0] == '#' && f.field()[0][W - 1] == '#' &&
+        f.field()[H - 1][W - 1] == '#') {
+      dbg("INTERESTING SHIT");
+      dbg(n_matches, fitness, i);
+      dbg(float(n_matches.first * live_multiplier + n_matches.second) /
+          max_fitness);
+      dbg(pool[i]);
+      if ((size_t)dbg(ranges::count(pool, pool[i])) > pool_size / 10)
+      exit(1);
+    } */
 
     // dbg(n_matches);
     fitness[i] = float(n_matches.first * live_multiplier + n_matches.second) /
                  max_fitness;
-
     // }
   });
 }
@@ -176,6 +195,7 @@ Metrics calculateMetrics(const Field::FIELD_T& target, Field&& best,
         m.true_pos++;
     }
   }
+  m.true_neg = best.H * best.W - (m.true_pos + m.false_neg + m.false_pos);
   m.precision = float(m.true_pos) / (m.true_pos + m.false_pos);
   m.recall = float(m.true_pos) / (m.true_pos + m.false_neg);
   return m;
