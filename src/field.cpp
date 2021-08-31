@@ -6,49 +6,50 @@ Field::Field(const std::list<std::string>& init, size_t H_, size_t W_)
     : H(H_ ? H_ : init.size()), W(W_ ? W_ : init.front().size()) {
   auto& f = f_[cur_field];
 
-  f_ = {FIELD_T(H, vector<char>(W, '.')), FIELD_T(H, vector<char>(W, '.'))};
+  f_ = {VVC(H, VC(W, '.')), VVC(H, VC(W, '.'))};
   size_t h = init.size(), w = init.begin()->size();
   size_t h_offs = H / 2 - h / 2, w_offs = W / 2 - w / 2;
   auto l = init.begin();
   for (size_t i = 0; i < h; i++, ++l) {
     auto c = l->begin();
-    for (size_t j = 0; j < w; j++, ++c) {
-      f[h_offs + i][w_offs + j] = *c;
-    }
+    for (size_t j = 0; j < w; j++, ++c) f[h_offs + i][w_offs + j] = *c;
   }
 }
 
 Field::Field(const Field& other)
-    : H(other.H), W(other.W), f_(other.f_), cur_field(other.cur_field) {}
+    : H(other.H), W(other.W), f_(other.f_), cur_field(other.cur_field.load()) {}
 
 Field::Field(Field&& other)
-    : H(other.H), W(other.W), f_(move(other.f_)), cur_field(other.cur_field) {}
+    : H(other.H),
+      W(other.W),
+      f_(move(other.f_)),
+      cur_field(other.cur_field.load()) {}
 
-Field::Field(FIELD_T&& f_) : H(f_.size()), W(f_[0].size()), f_({f_, f_}) {}
+Field::Field(VVC&& f_) : H(f_.size()), W(f_[0].size()), f_({f_, f_}) {}
 
 Field& Field::operator=(Field&& other) {
   assert(this->W == other.W && this->H == other.W);
   this->f_ = move(other.f_);
-  this->cur_field = other.cur_field;
+  this->cur_field = other.cur_field.load();
   return *this;
-} 
+}
 
 bool Field::operator==(const Field& other) const {
-  return f_ == other.f_ && cur_field == other.cur_field;
+  // return f_ == other.f_ && cur_field == other.cur_field;
+  return this->field() == other.field();
 }
 
 Field Field::get_random(size_t H, size_t W, size_t ratio) {
-  Field::FIELD_T f_;
+  Field::VVC f_;
   f_.reserve(H);
   for (size_t i = 0; i < H; i++) {
-    f_.push_back(vector<char>(W, '#'));
+    f_.push_back(VC(W));
     ranges::generate(f_.back(), [=]() {
-      return randomGen(ratio ? ratio : ratio_of_death_to_live_in_random_init) ? '#' : '.';
+      return randomGen(ratio ? ratio : Field::ratio) ? '#' : '.';
     });
-    // ranges::generate(f_.back(), []() { return '.'; });
   }
   auto f = Field(move(f_));
-  // for (size_t i = 0; i < 5; i++) f.step();
+  for (size_t i = 0; i < 5; i++) f.step();
   return f;
 }
 
@@ -95,10 +96,7 @@ void Field::updateStates() {
 void Field::step() {
   countNeighbours();
   updateStates();
-  {
-    lock_guard<mutex> lk(m);
-    cur_field = !cur_field;
-  }
+  cur_field = !cur_field;
 }
 
 Field::operator string() const {
@@ -117,9 +115,6 @@ Field::operator string() const {
   return s;
 }
 
-const Field::FIELD_T& Field::field() const {
-  lock_guard<mutex> lk(m);
-  return f_[cur_field];
-}
+const Field::VVC& Field::field() const { return f_[cur_field]; }
 
 ostream& operator<<(ostream& os, const Field& f) { return os << string(f); }

@@ -5,7 +5,7 @@
 typedef struct Entry_ {
   size_t id;
   size_t delta;
-  Field::FIELD_T f;
+  Field::VVC f;
 } Entry;
 
 std::vector<Entry> parseKaggleData(int n = -1,

@@ -37,7 +37,7 @@ void runGeneticAlgorithm() {
   // auto i = algs::io::readFileToList("data/glider.txt");
   // vector<Entry> inp{{0, 1, Field(i).field()}};
   for (auto& [id, delta, f] : inp) {
-    size_t max_n = 10000, n = max_n;
+    size_t max_n = 20, n = max_n;
 
     bool open = true;
     (void)open;
@@ -55,7 +55,7 @@ void runGeneticAlgorithm() {
         },
         f); */
     delta = 1;
-    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 500, 5, 20, 0.5);
+    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 10, 5, 20, 0.1);
     // GeneticAlgorithm g(Field(move(f)), delta, 100, 10e-3, 7, 1, 20, 0.5);
     while (g.step() != 1 && n--) {
       Metrics m = calculateMetrics(f, Field(g.getBest()), delta);

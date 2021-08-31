@@ -28,13 +28,13 @@ void GUI::checkEvents() {
   }
 }
 
-void GUI::showField(const Field::FIELD_T& f, const string& text) {
+void GUI::showField(const Field::VVC& f, const string& text) {
   GUI g(f.size(), f[0].size());
   g.update(f, 0, text);
   while (g.window.isOpen()) g.checkEvents();
 }
 
-void GUI::update(const Field::FIELD_T &f, size_t iteration, const string& text) {
+void GUI::update(const Field::VVC&f, size_t iteration, const string& text) {
   const size_t H = f.size(), W = f[0].size();
   vector<sf::Uint8> pixels(W * 4 * scale);
   sf::Texture texture;

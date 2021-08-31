@@ -20,26 +20,27 @@ GeneticAlgorithm::GeneticAlgorithm(const Field& target, size_t delta,
       n_elitist(n_elitist),
       live_multiplier(live_multiplier),
       max_fitness([&] {
-        int n_living = accumulate(target.field().begin(), target.field().end(),
-                                  0, [](int sum, const vector<char>& f) {
-                                    return sum + ranges::count(f, '#');
-                                  });
+        int n_living = accumulate(
+            target.field().begin(), target.field().end(), 0,
+            [](int sum, const VC& f) { return sum + ranges::count(f, '#'); });
         return n_living * live_multiplier + H * W - n_living;
-        ;
       }()),
       stagnation_limit(stagnation_limit),
       percent_extermination(percent_extermination) {
   assert(pool_size > n_elitist);
   pool.reserve(pool_size);
   for (size_t i = 0; i < pool_size; i++)
-    pool.push_back(Field::get_random(
+    /* pool.push_back(Field::get_random(
         H, W,
         max(2ul, ((i + pool_size) / 3) / max(1ul, 2 * pool_size / 3 / 625))));
+     */
+    pool.push_back(Field::get_random(H, W, 2));
   fitness.resize(pool_size);
   computeFitness();
 }
 
 float GeneticAlgorithm::step() {
+  // removeBest();
   auto mating_pool = selection();
   vector<Field> pool_;
   pool_.reserve(pool_size);
@@ -50,69 +51,51 @@ float GeneticAlgorithm::step() {
   pool_.insert(pool_.end(), std::make_move_iterator(elitists.begin()),
                std::make_move_iterator(elitists.end()));
   pool = move(pool_);
+  float best_fitness_ = best_fitness;
   computeFitness();
 
-  // Hm. I remove best ones
-  Field best(this->getBest());
-  if (fitness[best_index] == 1) return 1;
-  vector<size_t> is;
-  for (size_t i = 0; i < pool_size; i++)
-    if (pool[i] == best) {
-      is.push_back(i);
-      pool[i] =
-          Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
-    }
-  // dbg(is.size(), max_fitness);
-  computeFitness(is);
-
-  float best_fitness_ = *max_element(fitness.begin(), fitness.end());
-  // assert(!n_stagnation || best_fitness_ >= best_fitness);
-  /* n_stagnation = best_fitness_ == best_fitness ? n_stagnation + 1 : 0;
+  assert(!n_stagnation || best_fitness_ >= best_fitness);
+  n_stagnation =
+      abs(best_fitness_ - best_fitness) < 10e-4 ? n_stagnation + 1 : 0;
   if (n_stagnation > stagnation_limit) {
     std::cout << "EXTERMINATION!" << std::endl;
     n_stagnation = 0;
     extermination();
-  } */
-  return best_fitness = best_fitness_;
+  }
+  return best_fitness;
 }
 
-void GeneticAlgorithm::computeFitness(vector<size_t> is) {
-  if (!is.size()) {
-    is.resize(pool_size);
-    iota(is.begin(), is.end(), 0);
-  }
+void GeneticAlgorithm::removeBest() {
+  // Hm. I remove best ones
+  Field best(this->getBest());
+  for (size_t i = 0; i < pool_size; i++)
+    if (pool[i] == best)
+      pool[i] =
+          Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
+}
+
+void GeneticAlgorithm::computeFitness() {
+  vector<size_t> is(pool_size);
+  iota(is.begin(), is.end(), 0);
   for_each(execution::par, is.begin(), is.end(), [&](const size_t i) {
     // for (size_t i = 0; i < pool_size; i++) {
-    pair<int, int> n_matches{0, 0};  // N of live and death matches
+    int n_matches_live = 0, n_matches_dead = 0;
     auto f(pool[i]);
-
     for (size_t k = 0; k < delta; k++) f.step();
+
     for (auto l = f.field().begin(), l_ = target.field().begin();
          l_ != target.field().end(); l++, l_++)
       for (auto c = l->begin(), c_ = l_->begin(); c_ != l_->end(); c++, c_++)
-        if (*c == *c_) {
-          if (*c == '#')
-            n_matches.first++;
-          else
-            n_matches.second++;
-        }
-    /* if (n_matches.first == 4 && f.field()[0][0] == '#' &&
-        f.field()[H - 1][0] == '#' && f.field()[0][W - 1] == '#' &&
-        f.field()[H - 1][W - 1] == '#') {
-      dbg("INTERESTING SHIT");
-      dbg(n_matches, fitness, i);
-      dbg(float(n_matches.first * live_multiplier + n_matches.second) /
-          max_fitness);
-      dbg(pool[i]);
-      if ((size_t)dbg(ranges::count(pool, pool[i])) > pool_size / 10)
-      exit(1);
-    } */
+        if (*c == *c_) *c == '#' ? n_matches_live++ : n_matches_dead++;
 
-    // dbg(n_matches);
-    fitness[i] = float(n_matches.first * live_multiplier + n_matches.second) /
-                 max_fitness;
+    fitness[i] = pow(
+        double(n_matches_live * live_multiplier + n_matches_dead) / max_fitness,
+        2);
     // }
   });
+  auto best = ranges::max_element(fitness);
+  best_index = distance(fitness.begin(), best);
+  best_fitness = *best;
 }
 
 vector<Field> GeneticAlgorithm::getElite() {
@@ -152,37 +135,39 @@ vector<pair<size_t, size_t>> GeneticAlgorithm::selection() {
 
 Field GeneticAlgorithm::crossover(const Field& a, const Field& b,
                                   float a_fitness, float b_fitness) {
-  Field::FIELD_T ret(a.field());
-  size_t threshold = random_multiplier -
-                     random_multiplier * b_fitness / (a_fitness + b_fitness);
+  VVC ret(a.field());
+  size_t threshold =
+      rand_mult - rand_mult * b_fitness / (a_fitness + b_fitness);
   for (auto [l, l_] = tuple{ret.begin(), b.field().begin()}; l < ret.end();
        l++, l_++)
     for (auto [c, c_] = tuple{l->begin(), l_->begin()}; c < l->end(); c++, c_++)
-      if (randomGen<random_multiplier>() > threshold) *c = *c_;
+      if (randomGen<rand_mult>() > threshold) *c = *c_;
   return Field(move(ret));
 }
 
 Field GeneticAlgorithm::mutate(Field&& f) {
   for (auto l = f.f_[f.cur_field].begin(); l < f.f_[f.cur_field].end(); l++)
     for (auto c = l->begin(); c < l->end(); c++) {
-      if (randomGen<random_multiplier>() < mutation_rate * random_multiplier)
-        flip(*c);
+      if (randomGen<rand_mult>() < mutation_rate * rand_mult) flip(*c);
     }
   return move(f);
 }
 
 void GeneticAlgorithm::extermination() {
   for (size_t i = 0; i < pool_size; i++)
-    pool[i] = Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
+    if (randomGen<rand_mult>() < percent_extermination * rand_mult)
+      pool[i] =
+          Field::get_random(H, W, max(2ul, i / max(1ul, pool_size / 500)));
 }
 
 const Field& GeneticAlgorithm::getBest() const { return pool[best_index]; }
 
 float GeneticAlgorithm::getBestFitness() const { return best_fitness; }
 
-Metrics calculateMetrics(const Field::FIELD_T& target, Field&& best,
+Metrics calculateMetrics(const GeneticAlgorithm::VVC& target, Field&& best,
                          size_t delta) {
   Metrics m;
+  // dbg(best);
   for (size_t k = 0; k < delta; k++) best.step();
   for (size_t i = 0; i < best.H; i++) {
     for (size_t j = 0; j < best.W; j++) {
@@ -198,5 +183,10 @@ Metrics calculateMetrics(const Field::FIELD_T& target, Field&& best,
   m.true_neg = best.H * best.W - (m.true_pos + m.false_neg + m.false_pos);
   m.precision = float(m.true_pos) / (m.true_pos + m.false_pos);
   m.recall = float(m.true_pos) / (m.true_pos + m.false_neg);
+  /* dbg(best);
+  dbg(Field(VVC(target)));
+  dbg(m.true_pos, m.true_neg, m.false_pos, m.false_neg, m.precision, m.recall);
+*/
+  // exit(1);
   return m;
 }

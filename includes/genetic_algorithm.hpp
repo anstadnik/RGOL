@@ -1,32 +1,35 @@
 #pragma once
 
 #include <execution>
+#include <mutex>
 #include <numeric>
 #include <queue>
 #include <ranges>
-#include <string>
-#include <vector>
-#include <thread>
 #include <set>
-#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include "field.hpp"
 #include "gui.hpp"
 
-
 class GeneticAlgorithm {
  public:
+  using VC = std::vector<char>;
+  using VVC = std::vector<VC>;
   GeneticAlgorithm(const Field& target, size_t delta, size_t pool_size = 1000,
                    float mutation_rate = 10e-5, float live_multiplier = 10,
-                   size_t n_elitist = 5, size_t stagnation_limit = 100, float percent_extermination = 0.3);
+                   size_t n_elitist = 5, size_t stagnation_limit = 100,
+                   float percent_extermination = 0.3);
   // ~GeneticAlgorithm();
   float step();
-  void computeFitness(std::vector<size_t> is = {});
+  void computeFitness();
   // void computeFitness();
   std::vector<std::pair<size_t, size_t>> selection();
   Field crossover(const Field& a, const Field& b, float a_fitness,
                   float b_fitness);
   std::vector<Field> getElite();
+  void removeBest();
   Field mutate(Field&& f);
   void extermination();
   const Field& getBest() const;
@@ -35,7 +38,7 @@ class GeneticAlgorithm {
  private:
   std::vector<Field> pool;
   /* TODO: try double for fitness <27-08-21, astadnik> */
-  std::vector<float> fitness;
+  std::vector<double> fitness;
 
   const int H, W;
 
@@ -51,9 +54,9 @@ class GeneticAlgorithm {
   size_t best_index = 0;
   size_t n_stagnation = 0;
   float percent_extermination;
-  float best_fitness = 0;
+  double best_fitness = 0;
 
-  static constexpr size_t random_multiplier = 100;
+  static constexpr size_t rand_mult = 100;
 };
 
 typedef struct Metrics_ {
@@ -65,5 +68,4 @@ typedef struct Metrics_ {
   float recall = 0;
 } Metrics;
 
-Metrics calculateMetrics(const Field::FIELD_T& target, Field&& best,
-                         size_t delta);
+Metrics calculateMetrics(const Field::VVC& target, Field&& best, size_t delta);
