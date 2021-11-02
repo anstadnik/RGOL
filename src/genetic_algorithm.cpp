@@ -51,10 +51,10 @@ float GeneticAlgorithm::step() {
   pool_.insert(pool_.end(), std::make_move_iterator(elitists.begin()),
                std::make_move_iterator(elitists.end()));
   pool = move(pool_);
-  float best_fitness_ = best_fitness;
+  double best_fitness_ = best_fitness;
   computeFitness();
 
-  assert(!n_stagnation || best_fitness_ >= best_fitness);
+  assert(!n_stagnation || best_fitness + 10e-6 > best_fitness_);
   n_stagnation =
       abs(best_fitness_ - best_fitness) < 10e-4 ? n_stagnation + 1 : 0;
   if (n_stagnation > stagnation_limit) {
@@ -90,7 +90,7 @@ void GeneticAlgorithm::computeFitness() {
 
     fitness[i] = pow(
         double(n_matches_live * live_multiplier + n_matches_dead) / max_fitness,
-        2);
+        1);
     // }
   });
   auto best = ranges::max_element(fitness);
@@ -164,6 +164,22 @@ const Field& GeneticAlgorithm::getBest() const { return pool[best_index]; }
 
 float GeneticAlgorithm::getBestFitness() const { return best_fitness; }
 
+float GeneticAlgorithm::getDiversity() const {
+  vector<size_t> count_live(H * W);
+  for (const auto& f : pool) {
+    auto i = count_live.begin();
+    for (const auto& l : f.field())
+      for (const auto& c : l) {
+        if (c == '#') (*i)++;
+        i++;
+      }
+  }
+  return (float)(accumulate(
+             count_live.begin(), count_live.end(), 0,
+             [&](size_t s, size_t c) { return s + min(c, pool_size - c); })) /
+         (H * W * pool_size) * 2;
+}
+
 Metrics calculateMetrics(const GeneticAlgorithm::VVC& target, Field&& best,
                          size_t delta) {
   Metrics m;
@@ -173,9 +189,9 @@ Metrics calculateMetrics(const GeneticAlgorithm::VVC& target, Field&& best,
     for (size_t j = 0; j < best.W; j++) {
       if (const auto c = best.field()[i][j], c_ = target[i][j]; c != c_) {
         if (c == '#')
-          m.false_pos++;
-        else
           m.false_neg++;
+        else
+          m.false_pos++;
       } else if (c == '#')
         m.true_pos++;
     }

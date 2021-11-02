@@ -37,12 +37,12 @@ void runGeneticAlgorithm() {
   // auto i = algs::io::readFileToList("data/glider.txt");
   // vector<Entry> inp{{0, 1, Field(i).field()}};
   for (auto& [id, delta, f] : inp) {
-    size_t max_n = 20, n = max_n;
+    size_t max_n = 1000000, n = max_n;
 
-    bool open = true;
+    /* bool open = true;
     (void)open;
     optional<Field> best;
-    /* std::thread t(
+    std::thread t(
         [&](const auto f) {
           (void)f;
           while (!best.has_value()) usleep(100);
@@ -55,17 +55,17 @@ void runGeneticAlgorithm() {
         },
         f); */
     delta = 1;
-    GeneticAlgorithm g(Field(move(f)), delta, 10000, 10e-3, 10, 5, 20, 0.1);
+    GeneticAlgorithm g(Field(move(f)), delta, 1000, 10e-3, 10, 1, 100, 0.1);
     // GeneticAlgorithm g(Field(move(f)), delta, 100, 10e-3, 7, 1, 20, 0.5);
     while (g.step() != 1 && n--) {
       Metrics m = calculateMetrics(f, Field(g.getBest()), delta);
       Field tmp = Field(g.getBest());
       for (size_t k = 0; k < delta; k++) tmp.step();
-      best = move(tmp);
+      // best = move(tmp);
       std::cout << "N: " << max_n - n << ", Fitness: " << g.getBestFitness()
                 << ", TP: " << m.true_pos << ", TN: " << m.true_neg
                 << ", FP: " << m.false_pos << ", FN: " << m.false_neg
-                << std::endl;
+                << ", Diversity: " << g.getDiversity() << std::endl;
       /* for (const auto& l : best->field()) {
         ranges::copy(l, ostream_iterator<char>(cout, ""));
         std::cout << std::endl;
@@ -75,17 +75,17 @@ void runGeneticAlgorithm() {
       /* std::cout << "Precision: " << m.precision << ", recall: " << m.recall
                 << std::endl; */
     }
-    open = false;
+    // open = false;
     // t.join();
   }
 }
 
 int main(void) {
-  runGeneticAlgorithm();
-  /* constexpr size_t power = 10;
-  constexpr size_t H = 1 << power, W = 1 << power; */
+  // runGeneticAlgorithm();
+  constexpr size_t power = 10;
+  constexpr size_t H = 1 << power, W = 1 << power;
   // constexpr size_t W = 50, H = 50;
-  // runGui("data/input.txt", H, W, 1500);
+  runGui("data/input.txt", H, W, 1500);
   // runGui("data/glider.txt", H, W, 100);
 
   return 0;

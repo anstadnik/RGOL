@@ -4,7 +4,7 @@
 
 #include "field.hpp"
 
-constexpr size_t scale = 10;
+constexpr size_t scale = 2;
 
 class GUI {
  public:

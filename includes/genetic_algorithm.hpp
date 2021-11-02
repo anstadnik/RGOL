@@ -34,6 +34,7 @@ class GeneticAlgorithm {
   void extermination();
   const Field& getBest() const;
   float getBestFitness() const;
+  float getDiversity() const;
 
  private:
   std::vector<Field> pool;
