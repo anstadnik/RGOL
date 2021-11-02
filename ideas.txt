@@ -1,0 +1,2 @@
+Add freezing of correctly found pixels which won't affect other pixels (if the pixel is correct, and other pixels around it are correct too, then set that pixel to the value for all other individuals in the pool)
+Add default freezing for empty pixels surrounded by empty pixels
